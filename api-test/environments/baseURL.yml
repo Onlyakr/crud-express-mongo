@@ -1,0 +1,4 @@
+name: baseURL
+variables:
+  - name: baseURL
+    value: http://localhost:8000

@@ -1,0 +1,22 @@
+info:
+  name: createItem
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseURL}}/items"
+  body:
+    type: json
+    data: |-
+      {
+        "id": 4,
+        "name": "Comb"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

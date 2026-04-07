@@ -1,0 +1,22 @@
+info:
+  name: updateItemById
+  type: http
+  seq: 6
+
+http:
+  method: PUT
+  url: "{{baseURL}}/items/4"
+  body:
+    type: json
+    data: |-
+      {
+        "id": 4,
+        "name": "Banana"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
