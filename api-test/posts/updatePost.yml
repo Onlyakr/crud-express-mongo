@@ -1,11 +1,11 @@
 info:
-  name: getItemById
+  name: updatePost
   type: http
-  seq: 2
+  seq: 5
 
 http:
-  method: GET
-  url: "{{baseURL}}/items/4"
+  method: PUT
+  url: "{{baseURL}}/posts/1"
   auth: inherit
 
 settings:

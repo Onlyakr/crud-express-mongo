@@ -1,17 +1,19 @@
 info:
-  name: createItem
+  name: register
   type: http
-  seq: 6
+  seq: 1
 
 http:
   method: POST
-  url: "{{baseURL}}/items"
+  url: "{{baseURL}}/auth/register"
   body:
     type: json
     data: |-
       {
-        "id": 4,
-        "name": "Comb"
+        "username": "only",
+        "email": "only@email.com",
+        "asdf": "asdfsadf",
+        "password": "only1234"
       }
   auth: inherit
 

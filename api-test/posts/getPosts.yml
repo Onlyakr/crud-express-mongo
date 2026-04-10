@@ -1,11 +1,11 @@
 info:
-  name: signIn
+  name: getPosts
   type: http
   seq: 1
 
 http:
-  method: POST
-  url: "{{baseURL}}/auth/sign-in"
+  method: GET
+  url: "{{baseURL}}/posts"
   auth: inherit
 
 settings:
