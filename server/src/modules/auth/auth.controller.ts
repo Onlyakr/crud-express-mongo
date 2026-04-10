@@ -5,7 +5,11 @@ import sendEmail from "../../utils/email.js";
 
 import { registerSchema, loginSchema } from "./auth.schema.js";
 import { hashPassword, comparePassword } from "../../utils/hash.js";
-import { createAccessToken, createRefreshToken } from "../../utils/token.js";
+import {
+  createAccessToken,
+  createRefreshToken,
+  verifyRefreshToken,
+} from "../../utils/token.js";
 
 import type { Request, Response } from "express";
 
@@ -93,7 +97,7 @@ const authController = {
       const user = await User.findById(payload.sub);
 
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(401).json({ message: "User not found" });
       }
 
       if (user.isEmailVerified) {
@@ -131,14 +135,14 @@ const authController = {
       const user = await User.findOne({ email: normalizedEmail });
 
       if (!user) {
-        return res.status(403).json({ message: "Invalid credentials" });
+        return res.status(401).json({ message: "Invalid credentials" });
       }
 
       // Compare the password with the stored hash
       const isPasswordValid = await comparePassword(password, user.password);
 
       if (!isPasswordValid) {
-        return res.status(403).json({ message: "Invalid credentials" });
+        return res.status(401).json({ message: "Invalid credentials" });
       }
 
       // Check if the email is verified
@@ -178,6 +182,73 @@ const authController = {
     } catch (error) {
       const e = error as Error;
       console.error("Login error:", e.message);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  },
+
+  refreshHandler: async (req: Request, res: Response) => {
+    try {
+      const token = req.cookies.refreshToken;
+
+      if (!token) {
+        return res.status(401).json({ message: "No refresh token provided" });
+      }
+
+      const payload = await verifyRefreshToken(token);
+
+      const user = await User.findById(payload.sub);
+
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      if (payload.tokenVersion !== user.tokenVersion) {
+        return res.status(401).json({ message: "Invalid refresh token" });
+      }
+
+      const newAccessToken = await createAccessToken(
+        user.id,
+        user.role,
+        user.tokenVersion,
+      );
+
+      const newRefreshToken = await createRefreshToken(
+        user.id,
+        user.tokenVersion,
+      );
+
+      res.cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      return res.json({
+        message: "Token refreshed",
+        accessToken: newAccessToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          isEmailVerified: user.isEmailVerified,
+          isTwoFactorEnabled: user.isTwoFactorEnabled,
+        },
+      });
+    } catch (error) {
+      const e = error as Error;
+      console.error("Refresh token error:", e.message);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  },
+
+  logoutHandler: async (_req: Request, res: Response) => {
+    try {
+      res.clearCookie("refreshToken");
+      return res.json({ message: "Logged out successfully" });
+    } catch (error) {
+      const e = error as Error;
+      console.error("Logout error:", e.message);
       return res.status(500).json({ message: "Internal server error" });
     }
   },

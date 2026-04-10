@@ -21,7 +21,7 @@ A backend API built to refresh core concepts in **Express.js**, **TypeScript**, 
 - **Database:** MongoDB via Mongoose 9
 - **Security:** Bcryptjs (Hashing) + JWT
 - **Email:** Nodemailer
-- **Linting:** Biome
+- **Linting & Formatting:** Biome
 
 ---
 
@@ -41,7 +41,7 @@ src/
 │   │   └── posts.routes.ts
 │   ├── users/          # User model
 │   │   └── users.model.ts
-│   └── items/          # Items CRUD (in-memory)
+│   └── items/          # Items CRUD (basic CRUD)
 │       └── items.routes.ts
 ├── utils/               # Shared helpers (email, token, hash, mock-data)
 └── server.ts            # App entry point
@@ -79,9 +79,24 @@ pnpm install
 ### 2. Environment Setup
 Create a `.env` file:
 ```env
+NODE_ENV=development
 PORT=8000
+
 MONGO_URI=mongodb://localhost:27017/crud_db
+
 JWT_SECRET=your_super_secret_key
+
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+EMAIL_FROM=My App <no-reply@myapp.com>
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+
+APP_URL=http://localhost:8000
 ```
 
 ### 3. Run Development Server

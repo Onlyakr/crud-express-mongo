@@ -1,3 +1,4 @@
+// Basic CRUD routes for refreshing knowledge
 import express from "express";
 import mockData from "../../utils/mock-data.js";
 
