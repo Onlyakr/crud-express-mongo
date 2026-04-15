@@ -6,6 +6,14 @@ info:
 http:
   method: POST
   url: "{{baseURL}}/posts"
+  body:
+    type: json
+    data: |-
+      {
+        "title": "My thrid post",
+        "content": "This is my third post.",
+        "image": null
+      }
   auth: inherit
 
 settings:

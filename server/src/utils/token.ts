@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import env from "../config/env.js";
 
 export async function createAccessToken(
 	userId: string,
@@ -10,7 +11,7 @@ export async function createAccessToken(
 		role,
 		tokenVersion,
 	};
-	return jwt.sign(payload, process.env.JWT_SECRET as string, {
+	return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
 		expiresIn: "30m",
 	});
 }
@@ -20,13 +21,21 @@ export async function createRefreshToken(userId: string, tokenVersion: number) {
 		sub: userId,
 		tokenVersion,
 	};
-	return jwt.sign(payload, process.env.JWT_SECRET as string, {
+	return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
 		expiresIn: "7d",
 	});
 }
 
+export async function verifyAccessToken(token: string) {
+	return jwt.verify(token, env.JWT_ACCESS_SECRET) as {
+		sub: string;
+		role: string;
+		tokenVersion: number;
+	};
+}
+
 export async function verifyRefreshToken(token: string) {
-	return jwt.verify(token, process.env.JWT_SECRET as string) as {
+	return jwt.verify(token, env.JWT_REFRESH_SECRET) as {
 		sub: string;
 		tokenVersion: number;
 	};

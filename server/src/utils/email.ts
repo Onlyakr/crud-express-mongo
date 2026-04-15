@@ -1,34 +1,25 @@
 import nodemailer from "nodemailer";
+import env from "../config/env.js";
 
 export default async function sendEmail(
-  to: string,
-  subject: string,
-  html: string,
+	to: string,
+	subject: string,
+	html: string,
 ) {
-  if (
-    !process.env.SMTP_HOST ||
-    !process.env.SMTP_PORT ||
-    !process.env.SMTP_USER ||
-    !process.env.SMTP_PASS ||
-    !process.env.EMAIL_FROM
-  ) {
-    throw new Error("Email configuration is missing");
-  }
+	const transporter = nodemailer.createTransport({
+		host: env.SMTP_HOST,
+		port: env.SMTP_PORT,
+		secure: env.NODE_ENV === "production",
+		auth: {
+			user: env.SMTP_USER,
+			pass: env.SMTP_PASS,
+		},
+	});
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: process.env.NODE_ENV === "production",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to,
-    subject,
-    html,
-  });
+	await transporter.sendMail({
+		from: env.EMAIL_FROM,
+		to,
+		subject,
+		html,
+	});
 }

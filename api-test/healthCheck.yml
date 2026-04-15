@@ -1,11 +1,11 @@
 info:
-  name: refreshToken
+  name: healthCheck
   type: http
-  seq: 4
+  seq: 6
 
 http:
-  method: POST
-  url: "{{baseURL}}/auth/refresh"
+  method: GET
+  url: "{{baseURL}}/"
   auth: inherit
 
 settings:
