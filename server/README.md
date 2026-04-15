@@ -130,3 +130,26 @@ pnpm install
 # Run development server
 pnpm dev
 ```
+
+---
+
+## Auth Flow
+
+1. **Register:** `POST /auth/register` → Creates user, sends verification email
+2. **Verify Email:** Click link in email → Token verified
+3. **Login:** `POST /auth/login` → Returns accessToken + refreshToken cookies
+4. **Authenticated Requests:** Cookies sent automatically with requests
+5. **Refresh:** `POST /auth/refresh` → New accessToken cookie (if refreshToken valid)
+6. **Logout:** `POST /auth/logout` → Clears both cookies
+
+---
+
+## Quick Reference
+
+See [SUMMARY.md](./SUMMARY.md) for Express.js cheat sheet.
+
+---
+
+## License
+
+ISC

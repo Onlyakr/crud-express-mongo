@@ -1,179 +1,168 @@
 import type { Request, Response } from "express";
-import mongoose from "mongoose";
+import { isValidObjectId } from "mongoose";
 import z from "zod";
 import type { CustomRequest } from "../../middlewares/auth.middleware.js";
-import Posts from "./posts.model.js";
 import { createPostSchema, updatePostSchema } from "./posts.schema.js";
-
-function isValidObjectId(id: string): boolean {
-	return mongoose.Types.ObjectId.isValid(id);
-}
+import { postsService } from "./posts.service.js";
 
 const postsController = {
-	getAllPostsHandler: async (req: Request, res: Response) => {
-		try {
-			const { title, page = "1", limit = "10" } = req.query;
+  getAllPostsHandler: async (req: Request, res: Response) => {
+    try {
+      const {
+        title,
+        page = "1",
+        limit = "10",
+      } = req.query as {
+        title?: string;
+        page: string;
+        limit: string;
+      };
 
-			const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
-			const limitNum = Math.min(
-				100,
-				Math.max(1, parseInt(limit as string, 10) || 10),
-			);
-			const skip = (pageNum - 1) * limitNum;
+      const { posts, total, pageNum, limitNum } =
+        await postsService.getAllPosts(page, limit, title);
 
-			const whereClause = title
-				? { title: { $regex: `^${title}$`, $options: "i" } }
-				: {};
+      return res.json({
+        message: "Get all posts successfully",
+        data: posts,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
+    } catch (error) {
+      const e = error as Error;
+      console.error("Error getting all posts:", e.message);
+      res.json({ message: "Internal server error" });
+    }
+  },
 
-			const [posts, total] = await Promise.all([
-				Posts.find(whereClause).skip(skip).limit(limitNum).lean(),
-				Posts.countDocuments(whereClause),
-			]);
+  getPostByIdHandler: async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
 
-			return res.json({
-				message: "Get all posts successfully",
-				data: posts,
-				pagination: {
-					page: pageNum,
-					limit: limitNum,
-					total,
-					totalPages: Math.ceil(total / limitNum),
-				},
-			});
-		} catch (error) {
-			const e = error as Error;
-			console.error("Error getting all posts:", e.message);
-			res.json({ message: "Internal server error" });
-		}
-	},
+      if (!isValidObjectId(id)) {
+        return res.status(400).json({ message: "Invalid post ID format" });
+      }
 
-	getPostByIdHandler: async (req: Request, res: Response) => {
-		try {
-			const id = req.params.id as string;
+      const post = await postsService.getPostById(id);
 
-			if (!isValidObjectId(id)) {
-				return res.status(400).json({ message: "Invalid post ID format" });
-			}
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
 
-			const post = await Posts.findById(id);
+      return res.json({
+        message: "Get post by id successfully",
+        data: post,
+      });
+    } catch (error) {
+      const e = error as Error;
+      console.error("Error getting post by id:", e.message);
+      res.json({ message: "Internal server error" });
+    }
+  },
 
-			if (!post) {
-				return res.status(404).json({ message: "Post not found" });
-			}
+  createPostHandler: async (req: CustomRequest, res: Response) => {
+    try {
+      const userId = req.userId;
+      const isBodyValid = createPostSchema.safeParse({
+        ...req.body,
+        author: userId,
+      });
 
-			return res.json({
-				message: "Get post by id successfully",
-				data: post,
-			});
-		} catch (error) {
-			const e = error as Error;
-			console.error("Error getting post by id:", e.message);
-			res.json({ message: "Internal server error" });
-		}
-	},
+      if (!isBodyValid.success) {
+        const error = z.treeifyError(isBodyValid.error);
+        return res.status(400).json({ message: "Invalid post data", error });
+      }
 
-	createPostHandler: async (req: CustomRequest, res: Response) => {
-		try {
-			const { userId } = req;
-			const isBodyValid = createPostSchema.safeParse({
-				...req.body,
-				author: userId,
-			});
+      const newPost = await postsService.createPost(isBodyValid.data);
 
-			if (!isBodyValid.success) {
-				const error = z.treeifyError(isBodyValid.error);
-				return res.status(400).json({ message: "Invalid post data", error });
-			}
+      return res.json({
+        message: "Create post successfully",
+        data: newPost,
+      });
+    } catch (error) {
+      const e = error as Error;
+      console.error("Error creating post:", e.message);
+      res.json({ message: "Internal server error" });
+    }
+  },
 
-			const newPost = await Posts.create(isBodyValid.data);
+  updatePostHandler: async (req: CustomRequest, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const userId = req.userId;
 
-			return res.json({
-				message: "Create post successfully",
-				data: newPost,
-			});
-		} catch (error) {
-			const e = error as Error;
-			console.error("Error creating post:", e.message);
-			res.json({ message: "Internal server error" });
-		}
-	},
+      if (!isValidObjectId(id)) {
+        return res.status(400).json({ message: "Invalid post ID format" });
+      }
 
-	updatePostHandler: async (req: CustomRequest, res: Response) => {
-		try {
-			const id = req.params.id as string;
-			const { userId } = req;
+      const existingPost = await postsService.getPostById(id);
 
-			if (!isValidObjectId(id)) {
-				return res.status(400).json({ message: "Invalid post ID format" });
-			}
+      if (!existingPost) {
+        return res.status(404).json({ message: "Post not found" });
+      }
 
-			const post = await Posts.findById(id);
+      if (existingPost.author.toString() !== userId) {
+        return res
+          .status(403)
+          .json({ message: "Not authorized to update this post" });
+      }
 
-			if (!post) {
-				return res.status(404).json({ message: "Post not found" });
-			}
+      const isBodyValid = updatePostSchema.safeParse(req.body);
 
-			if (post.author.toString() !== userId) {
-				return res
-					.status(403)
-					.json({ message: "Not authorized to update this post" });
-			}
+      if (!isBodyValid.success) {
+        const error = z.treeifyError(isBodyValid.error);
+        return res.status(400).json({ message: "Invalid post data", error });
+      }
 
-			const isBodyValid = updatePostSchema.safeParse(req.body);
+      const updatedPost = await postsService.updatePost(id, isBodyValid.data);
 
-			if (!isBodyValid.success) {
-				const error = z.treeifyError(isBodyValid.error);
-				return res.status(400).json({ message: "Invalid post data", error });
-			}
+      return res.json({
+        message: "Update post successfully",
+        data: updatedPost,
+      });
+    } catch (error) {
+      const e = error as Error;
+      console.error("Error updating post:", e.message);
+      res.json({ message: "Internal server error" });
+    }
+  },
 
-			const updatedPost = await Posts.findByIdAndUpdate(id, isBodyValid.data, {
-				returnDocument: "after",
-			});
+  deletePostHandler: async (req: CustomRequest, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const userId = req.userId;
 
-			return res.json({
-				message: "Update post successfully",
-				data: updatedPost,
-			});
-		} catch (error) {
-			const e = error as Error;
-			console.error("Error updating post:", e.message);
-			res.json({ message: "Internal server error" });
-		}
-	},
+      if (!isValidObjectId(id)) {
+        return res.status(400).json({ message: "Invalid post ID format" });
+      }
 
-	deletePostHandler: async (req: CustomRequest, res: Response) => {
-		try {
-			const id = req.params.id as string;
-			const { userId } = req;
+      const existingPost = await postsService.getPostById(id);
 
-			if (!isValidObjectId(id)) {
-				return res.status(400).json({ message: "Invalid post ID format" });
-			}
+      if (!existingPost) {
+        return res.status(404).json({ message: "Post not found" });
+      }
 
-			const post = await Posts.findById(id);
+      if (existingPost.author.toString() !== userId) {
+        return res
+          .status(403)
+          .json({ message: "Not authorized to delete this post" });
+      }
 
-			if (!post) {
-				return res.status(404).json({ message: "Post not found" });
-			}
+      const deletedPost = await postsService.deletePost(id);
 
-			if (post.author.toString() !== userId) {
-				return res
-					.status(403)
-					.json({ message: "Not authorized to delete this post" });
-			}
-
-			const deletedPost = await Posts.findByIdAndDelete(id);
-
-			return res.json({
-				message: "Delete post successfully",
-				data: deletedPost,
-			});
-		} catch (error) {
-			const e = error as Error;
-			console.error("Error deleting post:", e.message);
-			res.json({ message: "Internal server error" });
-		}
-	},
+      return res.json({
+        message: "Delete post successfully",
+        data: deletedPost,
+      });
+    } catch (error) {
+      const e = error as Error;
+      console.error("Error deleting post:", e.message);
+      res.json({ message: "Internal server error" });
+    }
+  },
 };
 
 export default postsController;

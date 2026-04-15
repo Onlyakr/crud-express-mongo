@@ -20,3 +20,6 @@ export const updatePostSchema = z.object({
 	content: z.string().optional(),
 	image: z.string().nullable().default(null),
 });
+
+export type CreatePostInput = z.infer<typeof createPostSchema>;
+export type UpdatePostInput = z.infer<typeof updatePostSchema>;
